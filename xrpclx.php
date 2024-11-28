@@ -1,73 +1,20 @@
 <?php
 session_start();
 
+// Define root directory for file management
 $rootDir = 'uploads/'; // Root directory for file manager
 define('SECRET_KEY', 'your-secure-secret-key'); // Replace with a strong, random key
 
-// The password should be encrypted and stored securely
-define('ENCRYPTED_PASSWORD', openssl_encrypt('your_secure_password', 'AES-128-ECB', SECRET_KEY)); // Replace with your encrypted password
-
-// Function to encrypt a password
-function encryptPassword($password)
+// Function to encrypt content with AES-128-ECB
+function encryptContent($content)
 {
-    return openssl_encrypt($password, 'AES-128-ECB', SECRET_KEY);
+    return openssl_encrypt($content, 'AES-128-ECB', SECRET_KEY);
 }
 
-// Function to decrypt a password (not necessary for login, but could be used for password recovery)
-function decryptPassword($encryptedPassword)
+// Function to decrypt content with AES-128-ECB
+function decryptContent($encryptedContent)
 {
-    return openssl_decrypt($encryptedPassword, 'AES-128-ECB', SECRET_KEY);
-}
-
-// Check if the user is authenticated
-if (!isset($_SESSION['authenticated'])) {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
-        // Encrypt the input password
-        $inputPassword = encryptPassword($_POST['password']);
-
-        // Check if the input password matches the stored encrypted password
-        if ($inputPassword === ENCRYPTED_PASSWORD) {
-            $_SESSION['authenticated'] = true;
-            header('Location: xrpclx.php'); // Redirect to the main file manager
-            exit();
-        } else {
-            $error = "Incorrect password. Please try again.";
-        }
-    }
-
-    // Display login form if not authenticated
-    echo '<!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Login - File Manager</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    </head>
-    <body class="bg-light">
-        <div class="container d-flex justify-content-center align-items-center" style="height: 100vh;">
-            <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
-                <h2 class="text-center">Login</h2>
-                ' . (isset($error) ? '<div class="alert alert-danger">' . $error . '</div>' : '') . '
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" name="password" id="password" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                </form>
-            </div>
-        </div>
-    </body>
-    </html>';
-    exit();
-}
-
-// Logout functionality
-if (isset($_GET['logout'])) {
-    session_destroy();
-    header('Location: xrpclx.php'); // Redirect to login page
-    exit();
+    return openssl_decrypt($encryptedContent, 'AES-128-ECB', SECRET_KEY);
 }
 
 // Ensure root directory exists
@@ -80,7 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
     $fileName = basename($_FILES['file']['name']);
     $filePath = $rootDir . preg_replace("/[^a-zA-Z0-9\._-]/", "", $fileName);
 
-    if (move_uploaded_file($_FILES['file']['tmp_name'], $filePath)) {
+    // Encrypt file content before saving it
+    $fileContent = file_get_contents($_FILES['file']['tmp_name']);
+    $encryptedContent = encryptContent($fileContent);
+
+    if (file_put_contents($filePath, $encryptedContent)) {
         $message = '<div id="uploadSuccess" class="alert alert-success">File uploaded successfully!</div>';
     } else {
         $message = '<div id="uploadError" class="alert alert-danger">Failed to upload file.</div>';
@@ -155,7 +106,7 @@ if (isset($_GET['delete'])) {
                 if (element) {
                     element.style.display = 'none';
                 }
-            }, 3000);  // 3 seconds
+            }, 3000); // 3 seconds
         }
 
         // Hide the messages after 3 seconds
@@ -207,7 +158,9 @@ if (isset($_GET['delete'])) {
         </div>
 
         <!-- Message Alerts -->
-        <?php if (isset($message)) { echo $message; } ?>
+        <?php if (isset($message)) {
+            echo $message;
+        } ?>
 
         <!-- File and Folder List -->
         <div class="card">
@@ -225,11 +178,22 @@ if (isset($_GET['delete'])) {
                             <?php foreach ($filesAndDirs as $item): ?>
                                 <?php if ($item !== '.' && $item !== '..'): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($item) ?></td>
+                                        <td>
+                                            <?php
+                                            $filePath = $rootDir . $item;
+                                            // Check if it's a file and create a link for access
+                                            if (is_file($filePath)) {
+                                                echo '<a href="download.php?file=' . urlencode($item) . '" target="_blank">' . htmlspecialchars($item) . '</a>';
+                                            } else {
+                                                echo htmlspecialchars($item);
+                                            }
+                                            ?>
+                                        </td>
                                         <td>
                                             <!-- Delete Button -->
                                             <a href="?delete=<?= urlencode($item) ?>" class="btn btn-sm btn-danger"
                                                 onclick="return confirm('Are you sure you want to delete this?')">Delete</a>
+
                                             <!-- Edit Button with correct path -->
                                             <a href="e.php?dir=<?= urlencode($rootDir) ?>&edit=<?= urlencode($item) ?>" class="btn btn-sm btn-primary">Edit</a>
                                         </td>

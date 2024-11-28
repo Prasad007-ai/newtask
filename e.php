@@ -14,20 +14,17 @@ $rootDir = './uploads'; // Set the root directory where your files are stored
 $currentDir = isset($_GET['dir']) ? $_GET['dir'] : $rootDir; // Default to the root directory if not specified
 $editFileName = isset($_GET['edit']) ? $_GET['edit'] : '';
 
-// Debugging: Print current directory and file name
+// Ensure that the directory and file path are safe
+$currentDir = rtrim($currentDir, '/') . '/'; // Remove trailing slashes
+$editFilePath = $currentDir . $editFileName;
+
+// Debugging: Print current directory and file name (this is only for debugging purposes, remove for production)
 echo "Current Directory: " . htmlspecialchars($currentDir) . "<br>";
 echo "File to Edit: " . htmlspecialchars($editFileName) . "<br>";
 
-// Ensure that the file is valid and inside the root directory
-$currentDir = rtrim($currentDir, '/') . '/';
-$editFilePath = $currentDir . $editFileName;
-
-// Debugging: Print full path to the file
-echo "Full File Path: " . realpath($editFilePath) . "<br>";
-
-// Sanitize the file access to prevent directory traversal
+// Sanitize and validate the file access to prevent directory traversal
 if (strpos(realpath($editFilePath), realpath($rootDir)) !== 0 || !is_file($editFilePath)) {
-    die("Error: Invalid file path.");
+    die("Error: Invalid file path. Please ensure you are editing a valid file.");
 }
 
 // Read the content of the file
@@ -40,9 +37,14 @@ if (file_exists($editFilePath) && is_file($editFilePath)) {
 
 // Save the content when the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['file_content'])) {
-    $newContent = $_POST['file_content'];
-    file_put_contents($editFilePath, $newContent);
-    echo "<script>alert('File saved successfully!'); window.location.href='xrpclx.php?dir=" . urlencode($currentDir) . "';</script>";
+    // Sanitize the content to prevent code injection
+    $newContent = htmlspecialchars($_POST['file_content'], ENT_QUOTES, 'UTF-8');
+
+    if (file_put_contents($editFilePath, $newContent) !== false) {
+        echo "<script>alert('File saved successfully!'); window.location.href='xrpclx.php?dir=" . urlencode($currentDir) . "';</script>";
+    } else {
+        echo "<script>alert('Error saving the file. Please try again.');</script>";
+    }
 }
 ?>
 
@@ -55,12 +57,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['file_content'])) {
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+        }
+        h2 {
+            margin-bottom: 20px;
         }
         textarea {
             width: 100%;
             height: 400px;
             padding: 10px;
             font-family: monospace;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: vertical;
         }
         input[type="submit"] {
             padding: 10px 15px;
@@ -68,6 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['file_content'])) {
             color: white;
             border: none;
             margin-top: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
@@ -75,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['file_content'])) {
 
 <h2>Edit File: <?= htmlspecialchars($editFileName) ?></h2>
 
+<!-- Form to edit file content -->
 <form method="POST">
     <textarea name="file_content"><?= htmlspecialchars($fileContent) ?></textarea>
     <br>
