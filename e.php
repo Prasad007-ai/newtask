@@ -1,24 +1,28 @@
 <?php
 session_start();
+
+// Check if user is authenticated
 if (!isset($_SESSION['authenticated'])) {
     header('Location: xrpclx.php'); // Redirect to login page if not authenticated
     exit();
 }
 
 // Define the root directory for file management
-$rootDir = './';
+$rootDir = './uploads';  // Set the root directory where your files are stored
+
+// Get the directory and file to edit
 $currentDir = isset($_GET['dir']) ? $_GET['dir'] : $rootDir;
 $editFileName = isset($_GET['edit']) ? $_GET['edit'] : '';
 
+// Ensure the directory is not empty or invalid
 $currentDir = rtrim($currentDir, '/') . '/';
 $editFilePath = $currentDir . $editFileName;
 
-// Sanitize file access to prevent directory traversal
-$editFilePath = realpath($editFilePath);
-if (!$editFilePath || strpos($editFilePath, realpath($rootDir)) !== 0 || !is_file($editFilePath)) {
+// Sanitize the file access and prevent directory traversal
+// Make sure the file is within the root directory and is a valid file
+if (strpos(realpath($editFilePath), realpath($rootDir)) !== 0 || !is_file($editFilePath)) {
     die("Error: Invalid file path.");
 }
-
 
 $fileContent = '';
 if (file_exists($editFilePath) && is_file($editFilePath)) {
