@@ -1,0 +1,7 @@
+this is the project to view and edit files in a given folder,
+
+1. the editor is sometimes not working due to invalid path may be
+2. the folder creation is not working properly make it proper
+3. make the editor look good
+4. improve overall UI using bootstrap
+5. use AES encryption for the password to access the file
