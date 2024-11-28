@@ -8,34 +8,55 @@ if (!isset($_SESSION['authenticated'])) {
 }
 
 // Define the root directory for file management
-$rootDir = './uploads';  // Set the root directory where your files are stored
+$rootDir = 'C:/xampp/htdocs/project/uploads'; // Use absolute path to uploads
+if (!file_exists($rootDir)) {
+    die("Error: Root directory does not exist.");
+}
 
 // Get the directory and file to edit
 $currentDir = isset($_GET['dir']) ? $_GET['dir'] : $rootDir;
 $editFileName = isset($_GET['edit']) ? $_GET['edit'] : '';
 
-// Ensure the directory is not empty or invalid
 $currentDir = rtrim($currentDir, '/') . '/';
 $editFilePath = $currentDir . $editFileName;
 
-// Sanitize the file access and prevent directory traversal
-// Make sure the file is within the root directory and is a valid file
-if (strpos(realpath($editFilePath), realpath($rootDir)) !== 0 || !is_file($editFilePath)) {
-    die("Error: Invalid file path.");
+// Debugging output
+echo "<pre>";
+echo "Root Directory: " . $rootDir . "\n";
+echo "Current Directory (Input): " . $currentDir . "\n";
+echo "Edit File Name: " . $editFileName . "\n";
+echo "Constructed Edit File Path: " . $editFilePath . "\n";
+echo "Resolved Edit File Path (realpath): " . realpath($editFilePath) . "\n";
+echo "Resolved Root Directory (realpath): " . realpath($rootDir) . "\n";
+echo "</pre>";
+
+// Sanitize file access
+$resolvedEditFilePath = realpath($editFilePath);
+$resolvedRootDir = realpath($rootDir);
+
+if (!$resolvedEditFilePath) {
+    die("Error: Resolved file path is invalid.");
 }
 
-$fileContent = '';
-if (file_exists($editFilePath) && is_file($editFilePath)) {
-    $fileContent = file_get_contents($editFilePath);
+if (!str_starts_with($resolvedEditFilePath, $resolvedRootDir)) {
+    die("Error: File is outside the root directory.");
 }
 
-// Save the content when the form is submitted
+if (!is_file($resolvedEditFilePath)) {
+    die("Error: File does not exist or is not a valid file.");
+}
+
+// File content handling
+$fileContent = file_get_contents($resolvedEditFilePath);
+
+// Save changes
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['file_content'])) {
     $newContent = $_POST['file_content'];
-    file_put_contents($editFilePath, $newContent);
+    file_put_contents($resolvedEditFilePath, $newContent);
     echo "<script>alert('File saved successfully!'); window.location.href='xrpclx.php?dir=" . urlencode($currentDir) . "';</script>";
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
