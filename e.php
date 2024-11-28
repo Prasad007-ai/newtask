@@ -1,62 +1,50 @@
 <?php
 session_start();
 
-// Check if user is authenticated
+// Ensure the user is authenticated
 if (!isset($_SESSION['authenticated'])) {
-    header('Location: xrpclx.php'); // Redirect to login page if not authenticated
+    header('Location: xrpclx.php');
     exit();
 }
 
-// Define the root directory for file management
-$rootDir = 'C:/xampp/htdocs/project/uploads'; // Use absolute path to uploads
-if (!file_exists($rootDir)) {
-    die("Error: Root directory does not exist.");
-}
+// Define root directory for file management
+$rootDir = './uploads'; // Set the root directory where your files are stored
 
-// Get the directory and file to edit
-$currentDir = isset($_GET['dir']) ? $_GET['dir'] : $rootDir;
+// Get the directory and file to edit from the URL
+$currentDir = isset($_GET['dir']) ? $_GET['dir'] : $rootDir; // Default to the root directory if not specified
 $editFileName = isset($_GET['edit']) ? $_GET['edit'] : '';
 
+// Debugging: Print current directory and file name
+echo "Current Directory: " . htmlspecialchars($currentDir) . "<br>";
+echo "File to Edit: " . htmlspecialchars($editFileName) . "<br>";
+
+// Ensure that the file is valid and inside the root directory
 $currentDir = rtrim($currentDir, '/') . '/';
 $editFilePath = $currentDir . $editFileName;
 
-// Debugging output
-echo "<pre>";
-echo "Root Directory: " . $rootDir . "\n";
-echo "Current Directory (Input): " . $currentDir . "\n";
-echo "Edit File Name: " . $editFileName . "\n";
-echo "Constructed Edit File Path: " . $editFilePath . "\n";
-echo "Resolved Edit File Path (realpath): " . realpath($editFilePath) . "\n";
-echo "Resolved Root Directory (realpath): " . realpath($rootDir) . "\n";
-echo "</pre>";
+// Debugging: Print full path to the file
+echo "Full File Path: " . realpath($editFilePath) . "<br>";
 
-// Sanitize file access
-$resolvedEditFilePath = realpath($editFilePath);
-$resolvedRootDir = realpath($rootDir);
-
-if (!$resolvedEditFilePath) {
-    die("Error: Resolved file path is invalid.");
+// Sanitize the file access to prevent directory traversal
+if (strpos(realpath($editFilePath), realpath($rootDir)) !== 0 || !is_file($editFilePath)) {
+    die("Error: Invalid file path.");
 }
 
-if (!str_starts_with($resolvedEditFilePath, $resolvedRootDir)) {
-    die("Error: File is outside the root directory.");
+// Read the content of the file
+$fileContent = '';
+if (file_exists($editFilePath) && is_file($editFilePath)) {
+    $fileContent = file_get_contents($editFilePath);
+} else {
+    die("Error: File does not exist.");
 }
 
-if (!is_file($resolvedEditFilePath)) {
-    die("Error: File does not exist or is not a valid file.");
-}
-
-// File content handling
-$fileContent = file_get_contents($resolvedEditFilePath);
-
-// Save changes
+// Save the content when the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['file_content'])) {
     $newContent = $_POST['file_content'];
-    file_put_contents($resolvedEditFilePath, $newContent);
+    file_put_contents($editFilePath, $newContent);
     echo "<script>alert('File saved successfully!'); window.location.href='xrpclx.php?dir=" . urlencode($currentDir) . "';</script>";
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">

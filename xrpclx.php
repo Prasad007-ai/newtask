@@ -81,9 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
     $filePath = $rootDir . preg_replace("/[^a-zA-Z0-9\._-]/", "", $fileName);
 
     if (move_uploaded_file($_FILES['file']['tmp_name'], $filePath)) {
-        echo '<div class="alert alert-success">File uploaded successfully!</div>';
+        $message = '<div id="uploadSuccess" class="alert alert-success">File uploaded successfully!</div>';
     } else {
-        echo '<div class="alert alert-danger">Failed to upload file.</div>';
+        $message = '<div id="uploadError" class="alert alert-danger">Failed to upload file.</div>';
     }
 }
 
@@ -92,9 +92,9 @@ if (isset($_POST['create_folder']) && isset($_POST['folder_name'])) {
     $newFolder = $rootDir . preg_replace("/[^a-zA-Z0-9\._-]/", "", $_POST['folder_name']);
     if (!file_exists($newFolder)) {
         mkdir($newFolder, 0777, true);
-        echo '<div class="alert alert-success">Folder created successfully!</div>';
+        $message = '<div id="folderSuccess" class="alert alert-success">Folder created successfully!</div>';
     } else {
-        echo '<div class="alert alert-danger">Folder already exists.</div>';
+        $message = '<div id="folderError" class="alert alert-danger">Folder already exists.</div>';
     }
 }
 
@@ -139,7 +139,6 @@ if (isset($_GET['delete'])) {
 }
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -148,6 +147,30 @@ if (isset($_GET['delete'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        // Function to hide the alert messages after 3 seconds
+        function hideAlertMessage(id) {
+            setTimeout(function() {
+                var element = document.getElementById(id);
+                if (element) {
+                    element.style.display = 'none';
+                }
+            }, 3000);  // 3 seconds
+        }
+
+        // Hide the messages after 3 seconds
+        <?php if (isset($message)) { ?>
+            <?php if (strpos($message, 'uploadSuccess') !== false) { ?>
+                hideAlertMessage('uploadSuccess');
+            <?php } elseif (strpos($message, 'uploadError') !== false) { ?>
+                hideAlertMessage('uploadError');
+            <?php } elseif (strpos($message, 'folderSuccess') !== false) { ?>
+                hideAlertMessage('folderSuccess');
+            <?php } elseif (strpos($message, 'folderError') !== false) { ?>
+                hideAlertMessage('folderError');
+            <?php } ?>
+        <?php } ?>
+    </script>
 </head>
 
 <body class="bg-light">
@@ -182,6 +205,9 @@ if (isset($_GET['delete'])) {
                 </form>
             </div>
         </div>
+
+        <!-- Message Alerts -->
+        <?php if (isset($message)) { echo $message; } ?>
 
         <!-- File and Folder List -->
         <div class="card">
