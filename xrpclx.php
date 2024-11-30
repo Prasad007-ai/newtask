@@ -3,15 +3,15 @@ session_start();
 
 // Define root directory for file management
 $rootDir = 'uploads/'; // Root directory for file manager
-define('SECRET_KEY', 'your-secure-secret-key'); // Replace with a strong, random key
+define('SECRET_KEY', 'test'); // Replace with a strong, random key
 
 // The password should be encrypted and stored securely
-define('ENCRYPTED_PASSWORD', openssl_encrypt('your_secure_password', 'AES-128-ECB', SECRET_KEY)); // Replace with your encrypted password
+define('ENCRYPTED_PASSWORD', openssl_encrypt('test', 'AES-128-ECB', SECRET_KEY)); // Replace with your encrypted password
 
 // Function to encrypt a password
 function encryptPassword($password)
 {
-    return openssl_encrypt($password, 'AES-128-ECB', SECRET_KEY);
+    return openssl_encrypt('test', 'AES-128-ECB', SECRET_KEY);
 }
 
 // Function to decrypt a password (not necessary for login, but could be used for password recovery)
@@ -260,3 +260,13 @@ if (isset($_GET['delete'])) {
 </body>
 
 </html>
+
+
+
+ <!-- Edit Button with correct path
+ <a href="e.php?dir=<?= urlencode($rootDir) ?>&edit=<?= urlencode($item) ?>" class="btn btn-sm btn-primary">Edit</a> -->
+
+ <!-- define('SECRET_KEY', 'test'); // Replace with a strong, random key
+
+// The password should be encrypted and stored securely
+define('ENCRYPTED_PASSWORD', openssl_encrypt('test', 'AES-128-ECB', SECRET_KEY)); // Replace with your encrypted password -->
