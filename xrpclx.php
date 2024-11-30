@@ -234,7 +234,7 @@ if (isset($_GET['delete'])) {
                                             $filePath = $rootDir . $item;
                                             // Check if it's a file and create a link for access
                                             if (is_file($filePath)) {
-                                                echo '<a href="' . htmlspecialchars($filePath) . '" target="_blank">' . htmlspecialchars($item) . '</a>';
+                                                echo '<a href="' . htmlspecialchars($filePath) . '" target="_blank" download>' . htmlspecialchars($item) . '</a>';
                                             } else {
                                                 echo htmlspecialchars($item);
                                             }
@@ -245,7 +245,7 @@ if (isset($_GET['delete'])) {
                                             <a href="?delete=<?= urlencode($item) ?>" class="btn btn-sm btn-danger"
                                                 onclick="return confirm('Are you sure you want to delete this?')">Delete</a>
                                             <!-- // Edit Button for Folder -->
-                                            <a href="edit_file.php?file=<?= urlencode($item) ?>" class="btn btn-sm btn-primary">Edit</a>
+                                     <a href="edit_file.php?file=<?= urlencode($item) ?>" class="btn btn-sm btn-primary">Edit</a>
                                         </td>
                                     </tr>
                                 <?php endif; ?>
