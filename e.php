@@ -1,102 +1,112 @@
 <?php
 session_start();
 
-// Ensure the user is authenticated
+// Define root directory for file management
+$rootDir = 'uploads/'; // Root directory for file manager
+define('SECRET_KEY', 'test'); // Replace with a strong, random key
+
+// The password should be encrypted and stored securely
+define('ENCRYPTED_PASSWORD', openssl_encrypt('test', 'AES-128-ECB', SECRET_KEY)); // Replace with your encrypted password
+
+// Function to encrypt a password
+function encryptPassword($password)
+{
+    return openssl_encrypt($password, 'AES-128-ECB', SECRET_KEY);
+}
+
+// Function to decrypt a password (not necessary for login, but could be used for password recovery)
+function decryptPassword($encryptedPassword)
+{
+    return openssl_decrypt($encryptedPassword, 'AES-128-ECB', SECRET_KEY);
+}
+
+// Check if the user is authenticated
 if (!isset($_SESSION['authenticated'])) {
-    header('Location: xrpclx.php');
+    header('Location: xrpclx.php'); // Redirect to login page
     exit();
 }
 
-// Define root directory for file management
-$rootDir = './uploads'; // Set the root directory where your files are stored
-
-// Get the directory and file to edit from the URL
-$currentDir = isset($_GET['dir']) ? $_GET['dir'] : $rootDir; // Default to the root directory if not specified
-$editFileName = isset($_GET['edit']) ? $_GET['edit'] : '';
-
-// Ensure that the directory and file path are safe
-$currentDir = rtrim($currentDir, '/') . '/'; // Remove trailing slashes
-$editFilePath = $currentDir . $editFileName;
-
-// Debugging: Print current directory and file name (this is only for debugging purposes, remove for production)
-echo "Current Directory: " . htmlspecialchars($currentDir) . "<br>";
-echo "File to Edit: " . htmlspecialchars($editFileName) . "<br>";
-
-// Sanitize and validate the file access to prevent directory traversal
-if (strpos(realpath($editFilePath), realpath($rootDir)) !== 0 || !is_file($editFilePath)) {
-    die("Error: Invalid file path. Please ensure you are editing a valid file.");
+// Ensure root directory exists
+if (!file_exists($rootDir)) {
+    mkdir($rootDir, 0777, true);
 }
 
-// Read the content of the file
-$fileContent = '';
-if (file_exists($editFilePath) && is_file($editFilePath)) {
-    $fileContent = file_get_contents($editFilePath);
-} else {
-    die("Error: File does not exist.");
-}
+// Initialize the filesInFolder variable
+$filesInFolder = [];
 
-// Save the content when the form is submitted
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['file_content'])) {
-    // Sanitize the content to prevent code injection
-    $newContent = htmlspecialchars($_POST['file_content'], ENT_QUOTES, 'UTF-8');
+// Handle file uploads for specific folders
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
+    $folder = $_POST['folder'];
+    $fileName = basename($_FILES['file']['name']);
+    $filePath = $folder . DIRECTORY_SEPARATOR . preg_replace("/[^a-zA-Z0-9\._-]/", "", $fileName);
 
-    if (file_put_contents($editFilePath, $newContent) !== false) {
-        echo "<script>alert('File saved successfully!'); window.location.href='xrpclx.php?dir=" . urlencode($currentDir) . "';</script>";
+    if (move_uploaded_file($_FILES['file']['tmp_name'], $filePath)) {
+        $message = '<div id="uploadSuccess" class="alert alert-success">File uploaded successfully!</div>';
     } else {
-        echo "<script>alert('Error saving the file. Please try again.');</script>";
+        $message = '<div id="uploadError" class="alert alert-danger">Failed to upload file.</div>';
     }
 }
+
+// Check if folder exists and is empty
+if (isset($_GET['edit'])) {
+    $folderToEdit = $rootDir . basename($_GET['edit']);
+
+    if (is_dir($folderToEdit)) {
+        $filesInFolder = array_diff(scandir($folderToEdit), array('.', '..'));
+        $isEmpty = count($filesInFolder) === 0;
+    } else {
+        $isEmpty = false;
+    }
+}
+
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit File</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
-            margin: 0;
-            padding: 20px;
-        }
-        h2 {
-            margin-bottom: 20px;
-        }
-        textarea {
-            width: 100%;
-            height: 400px;
-            padding: 10px;
-            font-family: monospace;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            resize: vertical;
-        }
-        input[type="submit"] {
-            padding: 10px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            margin-top: 20px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        input[type="submit"]:hover {
-            background-color: #45a049;
-        }
-    </style>
+    <title>Edit Folder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
 
-<h2>Edit File: <?= htmlspecialchars($editFileName) ?></h2>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1>Edit Folder: <?= htmlspecialchars(basename($folderToEdit)) ?></h1>
 
-<!-- Form to edit file content -->
-<form method="POST">
-    <textarea name="file_content"><?= htmlspecialchars($fileContent) ?></textarea>
-    <br>
-    <input type="submit" value="Save Changes">
-</form>
+        <?php if ($isEmpty): ?>
+            <div class="alert alert-info">
+                This folder is empty. You can upload files to it.
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="folder" value="<?= htmlspecialchars($folderToEdit) ?>">
+                <div class="mb-3">
+                    <input type="file" name="file" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-success">Upload File</button>
+            </form>
+        <?php else: ?>
+            <p>The folder contains the following files. You can edit or download them:</p>
+            <ul class="list-group">
+                <?php foreach ($filesInFolder as $file): ?>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <?= htmlspecialchars($file) ?>
+                        <span class="btn-group">
+                            <!-- Download Link -->
+                            <a href="<?= $folderToEdit . DIRECTORY_SEPARATOR . urlencode($file) ?>" class="btn btn-sm btn-info" download>Download</a>
+                            <!-- Edit Button with correct path -->
+                            <a href="edit_file.php?dir=<?= urlencode($folderToEdit) ?>&edit=<?= urlencode($file) ?>" class="btn btn-sm btn-primary">Edit</a>
 
+                        </span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+
+        <br>
+        <a href="xrpclx.php" class="btn btn-primary">Back to File Manager</a>
+    </div>
 </body>
+
 </html>
