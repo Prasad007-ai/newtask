@@ -23,7 +23,7 @@ if (!isset($_SESSION['authenticated'])) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
         // Encrypt the input password before comparing 
         $inputPassword = encryptPassword($_POST['password']);
-        
+
         // Check if the encrypted password matches the stored encrypted password
         if ($inputPassword === ENCRYPTED_PASSWORD) {
             $_SESSION['authenticated'] = true;
@@ -74,10 +74,7 @@ if (!file_exists($rootDir)) {
     mkdir($rootDir, 0777, true);
 }
 
-
-
-
-// Handle file uploads
+// Handle file uploads to the root directory
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
     $fileName = basename($_FILES['file']['name']);
     $filePath = $rootDir . preg_replace("/[^a-zA-Z0-9\._-]/", "", $fileName);
@@ -139,6 +136,28 @@ if (isset($_GET['delete'])) {
         echo "<script>alert('Invalid path.'); window.location.href='xrpclx.php';</script>";
     }
 }
+
+// Handle file uploads to a specific folder
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_in_folder']) && isset($_POST['folder'])) {
+    $folderName = preg_replace("/[^a-zA-Z0-9\._-]/", "", $_POST['folder']); // Sanitize folder name
+    $folderPath = $rootDir . $folderName . DIRECTORY_SEPARATOR;
+
+    // Ensure folder exists
+    if (!file_exists($folderPath)) {
+        mkdir($folderPath, 0777, true);
+    }
+
+    // Sanitize the file name
+    $fileName = basename($_FILES['file_in_folder']['name']);
+    $filePath = $folderPath . preg_replace("/[^a-zA-Z0-9\._-]/", "", $fileName);
+
+    // Move the uploaded file to the folder
+    if (move_uploaded_file($_FILES['file_in_folder']['tmp_name'], $filePath)) {
+        $message = '<div id="uploadSuccess" class="alert alert-success">File uploaded successfully!</div>';
+    } else {
+        $message = '<div id="uploadError" class="alert alert-danger">Failed to upload file.</div>';
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -190,77 +209,90 @@ if (isset($_GET['delete'])) {
                     <div class="mb-3">
                         <input type="file" name="file" class="form-control" required>
                     </div>
-                    <button type="submit" class="btn btn-success">Upload</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
                 </form>
             </div>
         </div>
 
-        <!-- Create Folder Form -->
+        <!-- Folder Creation Form -->
         <div class="card my-3">
-            <div class="card-header bg-primary text-white">Create a New Folder</div>
+            <div class="card-header bg-success text-white">Create a Folder</div>
             <div class="card-body">
                 <form method="POST">
                     <div class="mb-3">
-                        <input type="text" name="folder_name" class="form-control" placeholder="Enter folder name" required>
+                        <input type="text" name="folder_name" class="form-control" required placeholder="Enter folder name">
                     </div>
-                    <button type="submit" name="create_folder" class="btn btn-warning">Create Folder</button>
+                    <button type="submit" name="create_folder" class="btn btn-success">Create Folder</button>
                 </form>
             </div>
         </div>
 
-        <!-- Message Alerts -->
+        <!-- Display Upload/Folder Messages -->
         <?php if (isset($message)) {
             echo $message;
         } ?>
 
-        <!-- File and Folder List -->
+        <!-- Files and Folders Table -->
         <div class="card">
-            <div class="card-header bg-dark text-white">Files and Folders</div>
+            <div class="card-header">Files and Folders</div>
             <div class="card-body">
-                <?php if (count($filesAndDirs) > 2): ?>
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($filesAndDirs as $item): ?>
-                                <?php if ($item !== '.' && $item !== '..'): ?>
-                                    <tr>
-                                        <td>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($filesAndDirs as $item): ?>
+                            <?php if ($item !== '.' && $item !== '..'): ?>
+                                <tr>
+                                    <td>
+                                        <?php
+                                        $filePath = $rootDir . $item;
+                                        if (is_file($filePath)) {
+                                            echo '<a href="' . htmlspecialchars($filePath) . '" target="_blank" download>' . htmlspecialchars($item) . '</a>';
+                                        } else {
+                                            echo htmlspecialchars($item);
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <!-- Delete Button -->
+                                        <a href="?delete=<?= urlencode($item) ?>" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Are you sure you want to delete this?')">Delete</a>
+
+                                        <!-- Edit Button for Folder -->
+                                        <?php if (is_dir($filePath)): ?>
+                                            <a href="edit_folder.php?folder=<?= urlencode($item) ?>" class="btn btn-sm btn-primary">Edit</a>
+                                        <?php else: ?>
+                                            <!-- Edit Button for File -->
+                                            <a href="edit_file.php?file=<?= urlencode($item) ?>" class="btn btn-sm btn-primary">Edit</a>
+                                        <?php endif; ?>
+
+                                        <!-- Upload Form for Folders if Empty -->
+                                        <?php if (is_dir($filePath)): ?>
                                             <?php
-                                            $filePath = $rootDir . $item;
-                                            // Check if it's a file and create a link for access
-                                            if (is_file($filePath)) {
-                                                echo '<a href="' . htmlspecialchars($filePath) . '" target="_blank" download>' . htmlspecialchars($item) . '</a>';
-                                            } else {
-                                                echo htmlspecialchars($item);
-                                            }
+                                            $folderContents = array_diff(scandir($filePath), ['.', '..']);
+                                            if (empty($folderContents)):
                                             ?>
-                                        </td>
-                                        <td>
-                                            <!-- Delete Button -->
-                                            <a href="?delete=<?= urlencode($item) ?>" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure you want to delete this?')">Delete</a>
-                                            <!-- // Edit Button for Folder -->
-                                     <a href="edit_file.php?file=<?= urlencode($item) ?>" class="btn btn-sm btn-primary">Edit</a>
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p>No files or folders found.</p>
-                <?php endif; ?>
+                                                <form method="POST" enctype="multipart/form-data" style="display:inline-block;">
+                                                    <input type="hidden" name="folder" value="<?= htmlspecialchars($item) ?>">
+                                                    <input type="file" name="file_in_folder" required>
+                                                    <button type="submit" class="btn btn-sm btn-warning">Upload</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </tbody>
+
+                </table>
             </div>
         </div>
     </div>
 </body>
 
 </html>
-
-
-
